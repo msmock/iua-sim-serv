@@ -14,6 +14,10 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * TODO: implement authorization code flow token request
+ * TODO: validate the idp assertion in the token request
+ */
 @ApplicationScoped
 public class AuthorizationService {
 
