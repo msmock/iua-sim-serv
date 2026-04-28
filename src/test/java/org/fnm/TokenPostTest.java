@@ -10,6 +10,7 @@ import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import org.jboss.logging.Logger;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Files;
@@ -21,6 +22,8 @@ import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 
 public class TokenPostTest {
+
+    private static final Logger LOG = Logger.getLogger(TokenPostTest.class);
 
     // TODO: get port from properties
     String url = "http://localhost:9000/token";
@@ -48,13 +51,13 @@ public class TokenPostTest {
                 .post(Entity.entity(requestPayload, MediaType.APPLICATION_FORM_URLENCODED), Response.class);
 
         // TODO: handle Errors
-        System.out.println("Status: " + response.getStatus() + " " + response.getStatusInfo().getReasonPhrase());
+        LOG.info("Status: " + response.getStatus() + " " + response.getStatusInfo().getReasonPhrase());
 
         String token = response.readEntity(String.class);
-        System.out.println(token);
+        LOG.info(token);
 
         String algName = getAlgName(token);
-        System.out.println("Algorithm: " + algName);
+        LOG.info("Algorithm: " + algName);
 
         Algorithm algorithm;
         switch (algName) {
@@ -72,8 +75,8 @@ public class TokenPostTest {
 
         // log payload
         String tokenPayload = new String(Base64.getUrlDecoder().decode(jwt.getPayload()));
-        System.out.println("Token payload is: ");
-        System.out.println(tokenPayload);
+        LOG.info("Token payload is: ");
+        LOG.info(tokenPayload);
 
         client.close();
     }
