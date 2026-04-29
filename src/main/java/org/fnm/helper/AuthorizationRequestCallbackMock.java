@@ -1,4 +1,4 @@
-package org.fnm;
+package org.fnm.helper;
 
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;

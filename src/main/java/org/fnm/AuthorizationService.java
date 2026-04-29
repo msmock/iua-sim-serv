@@ -5,6 +5,7 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.google.gson.JsonObject;
 import com.nimbusds.jose.JOSEException;
 import jakarta.enterprise.context.ApplicationScoped;
+import org.fnm.helper.AlgorithmHelper;
 import org.jboss.logging.Logger;
 
 import java.io.IOException;

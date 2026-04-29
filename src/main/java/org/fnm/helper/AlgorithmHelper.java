@@ -1,4 +1,4 @@
-package org.fnm;
+package org.fnm.helper;
 
 import com.auth0.jwt.algorithms.Algorithm;
 import com.nimbusds.jose.JOSEException;

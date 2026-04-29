@@ -49,8 +49,10 @@ public class AuthorizationRequestResource {
         // register authorization request data at authorization service
         authorizationService.register(code, requestParameter);
 
-        // re-direct to redirectUri
-        return Response.status(307).location(URI.create(uri)).build();
+        // re-direct to redirectUri. Uses http code 302 which allows the user agent to switch to the
+        // http POST protocol to communicate the send the code and state to the applications
+        // callback endpoint.
+        return Response.status(302).location(URI.create(uri)).build();
     }
 
     /**
