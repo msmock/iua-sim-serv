@@ -30,13 +30,15 @@ public class AuthorizationService {
     /**
      * @return the JWT as string
      */
-    public String getJWT(TokenRequestParameter tokenRequestParameter) throws ParseException, IOException, JOSEException {
+    public String buildJWT(TokenRequestParameter tokenRequestParameter) throws ParseException, IOException, JOSEException {
         Algorithm algorithm = AlgorithmHelper.loadRSAPrivateKey();
         JsonObject payload = buildJWTPayload(tokenRequestParameter);
         return JWT.create().withPayload(payload.toString()).sign(algorithm);
     }
 
     /**
+     * TODO: extend to support authorization code flow
+     *
      * @return token payload as JSON
      */
     private JsonObject buildJWTPayload(TokenRequestParameter tokenRequestParameter) {

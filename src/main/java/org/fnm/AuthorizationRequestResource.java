@@ -11,12 +11,13 @@ import jakarta.ws.rs.core.UriInfo;
 import org.jboss.logging.Logger;
 
 import java.net.URI;
-import java.util.UUID;
 
 @Path("/authorize")
 public class AuthorizationRequestResource {
 
     private static final Logger LOG = Logger.getLogger(TokenRequestParameter.class);
+
+    private static final String code="35944283-5736-4003-93ac-1e5a0a55e8d8";
 
     @Inject
     AuthorizationService authorizationService;
@@ -43,15 +44,13 @@ public class AuthorizationRequestResource {
             return Response.status(400, "Invalid request. At least one required parameter is missing.").build();
         }
 
-        String code = UUID.randomUUID().toString();
         String uri = requestParameter.redirectUri + "?authorization_code=" + code + "&state=" + requestParameter.state;
 
         // register authorization request data at authorization service
         authorizationService.register(code, requestParameter);
 
         // re-direct to redirectUri. Uses http code 302 which allows the user agent to switch to the
-        // http POST protocol to communicate the send the code and state to the applications
-        // callback endpoint.
+        // http POST protocol to send the code and state to the applications callback endpoint.
         return Response.status(302).location(URI.create(uri)).build();
     }
 

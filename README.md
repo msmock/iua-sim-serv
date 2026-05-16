@@ -39,7 +39,6 @@ Values may be:
 - RS256	: RSA Signature with SHA-256
 - ES256	: ECDSA Signature with P-256
 
-
 ## Running the application in dev mode
 
 You can run your application in dev mode that enables live coding using:
