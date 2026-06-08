@@ -3,18 +3,18 @@ package org.fnm;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.*;
+import org.fnm.helper.GrantType;
 import org.jboss.logging.Logger;
 
 import java.util.Base64;
 import java.util.List;
 
 // TODO validate http signature
-// TODO validate client_id and client_secret from http authorization header
 
 @Path("/token")
 public class TokenRequestResource {
 
-    private static final Logger LOG = Logger.getLogger(TokenRequestParameter.class);
+    private static final Logger LOG = Logger.getLogger(TokenRequestResource.class);
 
     @Inject
     AuthorizationService AuthorizationService;
@@ -48,26 +48,28 @@ public class TokenRequestResource {
         tokenRequestParameter.clientAssertionType = formParams.getFirst("client_assertion_type");
         tokenRequestParameter.clientAssertion = formParams.getFirst("client_assertion");
 
-        log2Console(headers, tokenRequestParameter);
+        log2Console(headers, formParams);
 
         if (!tokenRequestParameter.isComplete()) {
+            LOG.error("Invalid request. At least one required parameter is missing for grant type = " + tokenRequestParameter.grantType);
             return Response.status(400, "invalid_request").build();
         }
         
-        if ("client_credentials".equals(tokenRequestParameter.grantType) ||
-                "code".equals(tokenRequestParameter.grantType)){
+        if (GrantType.clientCredentials.equals(tokenRequestParameter.grantType) ||
+                GrantType.authorizationCode.equals(tokenRequestParameter.grantType)){
+
             String jwt = AuthorizationService.buildJWT(tokenRequestParameter);
             return Response.ok(jwt).build();
+
         } else {
             return Response.status(400, "unsupported_grant_type").build();
         }
-
     }
 
     /**
      *
      */
-    private static void log2Console(HttpHeaders headers, TokenRequestParameter reqParam) {
+    private static void log2Console(HttpHeaders headers, MultivaluedMap<String, String> formParam) {
 
         LOG.info("Incoming request:");
         LOG.info("Header data:");
@@ -78,13 +80,9 @@ public class TokenRequestResource {
         );
 
         LOG.info("Form parameters:");
-        LOG.info("grant_type : " + reqParam.grantType);
-        LOG.info("client_id : " + reqParam.clientId);
-        LOG.info("client_secret : " + reqParam.clientSecret);
-        LOG.info("principal : " + reqParam.principal);
-        LOG.info("principal_id : " + reqParam.principalId);
-        LOG.info("scope : " + reqParam.scope);
-        LOG.info("person_id : " + reqParam.personId);
+
+        formParam.keySet().forEach(key -> LOG.info(key + ":" + formParam.get(key)));
+
     }
 
     private List<String> parseAuthorizationHeader(String authHeader) {

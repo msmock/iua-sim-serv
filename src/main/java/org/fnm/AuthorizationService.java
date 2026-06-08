@@ -6,6 +6,7 @@ import com.google.gson.JsonObject;
 import com.nimbusds.jose.JOSEException;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.fnm.helper.AlgorithmHelper;
+import org.fnm.helper.GrantType;
 import org.jboss.logging.Logger;
 
 import java.io.IOException;
@@ -16,8 +17,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * TODO: implement authorization code flow token request
- * TODO: validate the idp assertion in the token request
+ *
  */
 @ApplicationScoped
 public class AuthorizationService {
@@ -32,51 +32,105 @@ public class AuthorizationService {
      */
     public String buildJWT(TokenRequestParameter tokenRequestParameter) throws ParseException, IOException, JOSEException {
         Algorithm algorithm = AlgorithmHelper.loadRSAPrivateKey();
-        JsonObject payload = buildJWTPayload(tokenRequestParameter);
-        return JWT.create().withPayload(payload.toString()).sign(algorithm);
+        String payload = buildJWTPayload(tokenRequestParameter);
+        return JWT.create().withPayload(payload).sign(algorithm);
     }
 
     /**
      * TODO: extend to support authorization code flow
      *
-     * @return token payload as JSON
+     * @return token payload as JSON string
      */
-    private JsonObject buildJWTPayload(TokenRequestParameter tokenRequestParameter) {
+    private String buildJWTPayload(TokenRequestParameter tokenRequestParameter) {
 
-        JsonObject payload = new JsonObject();
+        // check the grant type
+        if (tokenRequestParameter.grantType.equals(GrantType.clientCredentials)) {
 
-        payload.addProperty("iss", "IUATestServer");
-        payload.addProperty("sub", "${entity-client-id}");
-        payload.addProperty("aud", "http://ehr.ch");
-        payload.addProperty("iat", Instant.now().getEpochSecond());
-        payload.addProperty("nbf", Instant.now().getEpochSecond());
-        payload.addProperty("exp", Instant.now().getEpochSecond() + 300);
-        payload.addProperty("jti", UUID.randomUUID().toString());
-        payload.addProperty("scope", tokenRequestParameter.scope);
+            JsonObject payload = new JsonObject();
+            payload.addProperty("iss", "IUATestServer");
+            payload.addProperty("sub", tokenRequestParameter.clientId);
+            payload.addProperty("aud", "http://ehr.ch");
+            payload.addProperty("iat", Instant.now().getEpochSecond());
+            payload.addProperty("nbf", Instant.now().getEpochSecond());
+            payload.addProperty("exp", Instant.now().getEpochSecond() + 300);
+            payload.addProperty("jti", UUID.randomUUID().toString());
+            payload.addProperty("scope", tokenRequestParameter.scope);
+            payload.addProperty("person_id", tokenRequestParameter.personId);
 
-        JsonObject extensions = new JsonObject();
+            JsonObject extensions = new JsonObject();
 
-        JsonObject iuaExtension = new JsonObject();
-        iuaExtension.addProperty("subject_name", tokenRequestParameter.principal);
-        iuaExtension.addProperty("home_community_id", "${principal-community-id}"); // TODO read from HPD
-        extensions.add("ch_iua", iuaExtension);
+            JsonObject eprExtension = new JsonObject();
+            eprExtension.addProperty("user_id", tokenRequestParameter.principalId);
+            eprExtension.addProperty("user_id_qualifier", "urn:gs1:gln");
+            extensions.add("ch_epr", eprExtension);
 
-        JsonObject eprExtension = new JsonObject();
-        eprExtension.addProperty("user_id", tokenRequestParameter.principalId);
-        eprExtension.addProperty("user_id_qualifier", "urn:gs1:gln");
-        extensions.add("ch_epr", eprExtension);
+            JsonObject iuaExtension = new JsonObject();
+            iuaExtension.addProperty("subject_name", tokenRequestParameter.principal);
+            iuaExtension.addProperty("home_community_id", "${principal-community-id}");
+            extensions.add("ch_iua", iuaExtension);
 
-        payload.add("extensions", extensions);
-        return payload;
+            payload.add("extensions", extensions);
+            return payload.toString();
+
+        } else if (tokenRequestParameter.grantType.equals(GrantType.authorizationCode)) {
+
+            // throw exception if the authorization code is not registered
+            String authorizationCode = tokenRequestParameter.code;
+            AuthorizationRequestParameter authorizationRequestParameter = authorizationRequests.get(authorizationCode);
+            if (authorizationRequestParameter == null) {
+                throw new IllegalArgumentException("Unknown authorization code");
+            }
+
+            // verify the client assertion
+            String clientAssertion = tokenRequestParameter.clientAssertion;
+            LOG.info("clientAssertion: " + clientAssertion);
+
+            // TODO verify signature and read the user ID
+
+            // TODO parse scope for role
+
+            // build payload
+            JsonObject payload = new JsonObject();
+            payload.addProperty("iss", "IUATestServer");
+            payload.addProperty("sub", tokenRequestParameter.clientId);
+            payload.addProperty("aud", "http://ehr.ch");
+            payload.addProperty("iat", Instant.now().getEpochSecond());
+            payload.addProperty("nbf", Instant.now().getEpochSecond());
+            payload.addProperty("exp", Instant.now().getEpochSecond() + 300);
+            payload.addProperty("jti", UUID.randomUUID().toString());
+
+            payload.addProperty("scope", authorizationRequestParameter.scope);
+            payload.addProperty("person_id", authorizationRequestParameter.personId);
+
+            JsonObject extensions = new JsonObject();
+
+            // TODO depends on user role
+            JsonObject eprExtension = new JsonObject();
+            eprExtension.addProperty("user_id", authorizationRequestParameter.principalId);
+            eprExtension.addProperty("user_id_qualifier", "urn:gs1:gln");
+            extensions.add("ch_epr", eprExtension);
+
+            JsonObject iuaExtension = new JsonObject();
+            iuaExtension.addProperty("subject_name", authorizationRequestParameter.principal);
+            iuaExtension.addProperty("home_community_id", "${principal-community-id}");
+            extensions.add("ch_iua", iuaExtension);
+
+            payload.add("extensions", extensions);
+            return payload.toString();
+
+        }
+
+        throw new IllegalArgumentException("Unsupported grant type: " + tokenRequestParameter.grantType);
+
     }
 
     /**
      * Register the authorization request from the authorization code flow
      *
-     * @param code the authorization code
+     * @param code             the authorization code
      * @param requestParameter the authorization request parameter
      */
-    public void register(String code, AuthorizationRequestParameter requestParameter) {
+    public void registerAuthorizationRequest(String code, AuthorizationRequestParameter requestParameter) {
         authorizationRequests.put(code, requestParameter);
     }
 }

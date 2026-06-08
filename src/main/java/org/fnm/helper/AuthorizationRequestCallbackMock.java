@@ -18,7 +18,7 @@ public class AuthorizationRequestCallbackMock {
                         @QueryParam("authorization_code") String authCode,
                         @QueryParam("state") String state) {
 
-        String msg = "Callback mock called with authorization code=" + authCode + " and state=" + state;
+        String msg = "Callback mock called with authorization code = " + authCode + " and state = " + state;
         LOG.info(msg);
         return Response.ok(msg).build();
     }

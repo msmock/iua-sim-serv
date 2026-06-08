@@ -1,22 +1,28 @@
 package org.fnm;
 
+import org.fnm.helper.GrantType;
+import org.jboss.logging.Logger;
+
 public class TokenRequestParameter {
 
+    private static final Logger LOG = Logger.getLogger(TokenRequestParameter.class);
+
     // common
-    public String grantType;
-    public String clientId;
-    public String clientSecret;
+    public String grantType; // mandatory
+    public String clientId; // mandatory
+    public String clientSecret; // mandatory
 
     // CC Flow
-    public String principal;
-    public String principalId;
     public String scope;
-    public String personId;
+    public String principal; // optional
+    public String principalId; // mandatory for CC Flow
+    public String personId; // optional. Indicates the token as a basic or an extended token.
 
     // AC Flow
-    public String code;
-    public String clientAssertion;
-    public String clientAssertionType;
+    public String code; // mandatory
+    public String clientAssertion; // mandatory
+    public String clientAssertionType; // mandatory
+
 
     /**
      * @return true, if personId is set indicating a extended token
@@ -34,15 +40,14 @@ public class TokenRequestParameter {
             return false;
         }
 
-        if (grantType.equals("client_credentials")) {
+        if (grantType.equals(GrantType.clientCredentials)) {
             return (clientId != null && !clientId.isEmpty() &&
                     clientSecret != null && !clientSecret.isEmpty() &&
-                    principal != null && !principal.isEmpty() &&
                     principalId != null && !principalId.isEmpty() &&
                     scope != null && !scope.isEmpty());
         }
 
-        if (grantType.equals("authorization_code")) {
+        if (grantType.equals(GrantType.authorizationCode)) {
             return (clientId != null && !clientId.isEmpty() &&
                     clientSecret != null && !clientSecret.isEmpty() &&
                     code != null && !code.isEmpty() &&

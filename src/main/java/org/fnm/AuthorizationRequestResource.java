@@ -11,13 +11,12 @@ import jakarta.ws.rs.core.UriInfo;
 import org.jboss.logging.Logger;
 
 import java.net.URI;
+import java.util.UUID;
 
 @Path("/authorize")
 public class AuthorizationRequestResource {
 
-    private static final Logger LOG = Logger.getLogger(TokenRequestParameter.class);
-
-    private static final String code="35944283-5736-4003-93ac-1e5a0a55e8d8";
+    private static final Logger LOG = Logger.getLogger(TokenRequestResource.class);
 
     @Inject
     AuthorizationService authorizationService;
@@ -36,18 +35,25 @@ public class AuthorizationRequestResource {
         requestParameter.codeChallenge = queryParams.getFirst("code_challenge");
         requestParameter.codeChallengeMethod = queryParams.getFirst("code_challenge_method");
         requestParameter.requestedTokenType = queryParams.getFirst("requested_token_type");
+        requestParameter.principal = queryParams.getFirst("principal");
+        requestParameter.principalId = queryParams.getFirst("principal_id");
+        requestParameter.group = queryParams.getFirst("group");
+        requestParameter.groupId = queryParams.getFirst("group_id");
+        requestParameter.personId = queryParams.getFirst("person_id");
 
-        log2Console(headers, requestParameter);
+        log2Console(headers, queryParams);
 
         if (!requestParameter.isComplete()) {
             LOG.error("Invalid request. At least one required parameter is missing.");
             return Response.status(400, "Invalid request. At least one required parameter is missing.").build();
         }
 
+        // generate authorization code
+        String code = UUID.randomUUID().toString();
         String uri = requestParameter.redirectUri + "?authorization_code=" + code + "&state=" + requestParameter.state;
 
         // register authorization request data at authorization service
-        authorizationService.register(code, requestParameter);
+        authorizationService.registerAuthorizationRequest(code, requestParameter);
 
         // re-direct to redirectUri. Uses http code 302 which allows the user agent to switch to the
         // http POST protocol to send the code and state to the applications callback endpoint.
@@ -57,7 +63,7 @@ public class AuthorizationRequestResource {
     /**
      *
      */
-    private static void log2Console(HttpHeaders headers, AuthorizationRequestParameter reqParam) {
+    private static void log2Console(HttpHeaders headers, MultivaluedMap<String, String> queryParam) {
 
         LOG.info("Incoming request:");
         LOG.info("Header data:");
@@ -68,16 +74,9 @@ public class AuthorizationRequestResource {
         );
 
         LOG.info("Incoming request with query parameters:");
-        LOG.info("required:");
-        LOG.info("response_type : " + reqParam.responseType);
-        LOG.info("state : " + reqParam.state);
-        LOG.info("redirect_uri : " + reqParam.redirectUri);
-        LOG.info("scope : " + reqParam.scope);
-        LOG.info("optional:");
-        LOG.info("resource : " + reqParam.resource);
-        LOG.info("code_challenge : " + reqParam.codeChallenge);
-        LOG.info("code_challenge_method : " + reqParam.codeChallengeMethod);
-        LOG.info("requested_token_type : " + reqParam.requestedTokenType);
+        queryParam.keySet().forEach(
+                key -> LOG.info(key + ":" + queryParam.get(key))
+        );
     }
 
 
