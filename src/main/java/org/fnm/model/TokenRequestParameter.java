@@ -1,4 +1,4 @@
-package org.fnm;
+package org.fnm.model;
 
 import org.fnm.helper.GrantType;
 import org.jboss.logging.Logger;
@@ -32,7 +32,7 @@ public class TokenRequestParameter {
     }
 
     /**
-     * @return true, if all required fields are set
+     * @return true, if all required fields are set. The required fields depend on the grant type.
      */
     public boolean isComplete() {
 

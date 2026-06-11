@@ -7,11 +7,17 @@ import com.nimbusds.jose.JOSEException;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.fnm.helper.AlgorithmHelper;
 import org.fnm.helper.GrantType;
+import org.fnm.helper.PurposeOfUse;
+import org.fnm.helper.UserRole;
+import org.fnm.model.AuthorizationRequestParameter;
+import org.fnm.model.TokenRequestParameter;
 import org.jboss.logging.Logger;
 
 import java.io.IOException;
 import java.text.ParseException;
 import java.time.Instant;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -23,6 +29,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class AuthorizationService {
 
     private static final Logger LOG = Logger.getLogger(AuthorizationService.class);
+
+    public static final String SPID = "761337610411353650^^^&2.16.756.5.30.1.127.3.10.3&ISO";
 
     // container for the authorization requests
     private final Map<String, AuthorizationRequestParameter> authorizationRequests = new ConcurrentHashMap<>();
@@ -37,7 +45,6 @@ public class AuthorizationService {
     }
 
     /**
-     * TODO: extend to support authorization code flow
      *
      * @return token payload as JSON string
      */
@@ -87,8 +94,6 @@ public class AuthorizationService {
 
             // TODO verify signature and read the user ID
 
-            // TODO parse scope for role
-
             // build payload
             JsonObject payload = new JsonObject();
             payload.addProperty("iss", "IUATestServer");
@@ -98,13 +103,62 @@ public class AuthorizationService {
             payload.addProperty("nbf", Instant.now().getEpochSecond());
             payload.addProperty("exp", Instant.now().getEpochSecond() + 300);
             payload.addProperty("jti", UUID.randomUUID().toString());
-
             payload.addProperty("scope", authorizationRequestParameter.scope);
-            payload.addProperty("person_id", authorizationRequestParameter.personId);
 
-            JsonObject extensions = new JsonObject();
+            // if person id is null, the token is a basic access token
+            if (authorizationRequestParameter.personId != null && !authorizationRequestParameter.personId.isEmpty()) {
+                payload.addProperty("person_id", authorizationRequestParameter.personId);
+            }
 
-            // TODO depends on user role
+            // parse scope for role, e.g.: purpose_of_use=urn:oid:2.16.756.5.30.1.127.3.10.5|NORM subject_role=urn:oid:2.16.756.5.30.1.127.3.10.6|HCP
+            String scopeS = authorizationRequestParameter.scope;
+            Map<String, String> scopeMap = parseScope(scopeS);
+
+            String role = scopeMap.get("subject_role");
+
+            LOG.info("User role is : " + role);
+
+            if (role == null || role.isEmpty()) throw new IllegalArgumentException("Unsupported user role : " + role);
+
+            JsonObject extensions = buildExtensionsForRole(role, authorizationRequestParameter);
+            payload.add("extensions", extensions);
+
+            LOG.info("payload: " + payload.toString());
+
+            return payload.toString();
+
+        }
+
+        throw new IllegalArgumentException("Unsupported grant type: " + tokenRequestParameter.grantType);
+
+    }
+
+
+    private JsonObject buildExtensionsForRole(String role, AuthorizationRequestParameter authorizationRequestParameter) {
+
+        JsonObject extensions = new JsonObject();
+
+        if (UserRole.PAT.equals(role)) {
+
+            // always use the same spid for patients with role PAT
+            JsonObject eprExtension = new JsonObject();
+            eprExtension.addProperty("user_id", authorizationRequestParameter.personId);
+            eprExtension.addProperty("user_id_qualifier", "urn:e-health-suisse:2015:epr-spid");
+            extensions.add("ch_epr", eprExtension);
+
+            // mock person id, name and home community id
+            JsonObject iuaExtension = new JsonObject();
+            iuaExtension.addProperty("subject_name", "Martina Mustermann");
+            iuaExtension.addProperty("subject_role", role);
+            iuaExtension.addProperty("purpose_of_use", PurposeOfUse.NORM);
+            iuaExtension.addProperty("home_community_id", "urn:oid:1.2.3.4");
+            iuaExtension.addProperty("person_id", authorizationRequestParameter.personId);
+            extensions.add("ch_iua", iuaExtension);
+
+        } else if (UserRole.HCP.equals(role)){
+
+            // requires iua extension, epr extension and ch_group extension
+
             JsonObject eprExtension = new JsonObject();
             eprExtension.addProperty("user_id", authorizationRequestParameter.principalId);
             eprExtension.addProperty("user_id_qualifier", "urn:gs1:gln");
@@ -115,13 +169,23 @@ public class AuthorizationService {
             iuaExtension.addProperty("home_community_id", "${principal-community-id}");
             extensions.add("ch_iua", iuaExtension);
 
-            payload.add("extensions", extensions);
-            return payload.toString();
+        } else {
+
+            // branch for role
+
+            JsonObject eprExtension = new JsonObject();
+            eprExtension.addProperty("user_id", authorizationRequestParameter.principalId);
+            eprExtension.addProperty("user_id_qualifier", "urn:gs1:gln");
+            extensions.add("ch_epr", eprExtension);
+
+            JsonObject iuaExtension = new JsonObject();
+            iuaExtension.addProperty("subject_name", authorizationRequestParameter.principal);
+            iuaExtension.addProperty("home_community_id", "${principal-community-id}");
+            extensions.add("ch_iua", iuaExtension);
 
         }
 
-        throw new IllegalArgumentException("Unsupported grant type: " + tokenRequestParameter.grantType);
-
+        return extensions;
     }
 
     /**
@@ -133,4 +197,47 @@ public class AuthorizationService {
     public void registerAuthorizationRequest(String code, AuthorizationRequestParameter requestParameter) {
         authorizationRequests.put(code, requestParameter);
     }
+
+    /**
+     * Find the authorization request by the authorization code
+     *
+     * @param code the authorization code returned in the authorization request
+     * @return AuthorizationRequestParameter
+     */
+    public AuthorizationRequestParameter findAuthorizationRequest(String code) {
+        return authorizationRequests.get(code);
+    }
+
+
+    public Map<String, String> parseScope(String scopeString) {
+
+        if (scopeString == null || scopeString.trim().isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        // split on whitespace or commas
+        String[] tokens = scopeString.trim().split("[\\s,]+");
+
+        Map<String, String> result = new LinkedHashMap<>();
+        for (String token : tokens) {
+
+            if (token.isEmpty()) continue;
+            // accept either ":" or "=" as key/value separator
+            // TODO should be the minimum of both values if both are > 0
+            int idx = token.indexOf('=');
+            if (idx < 0) idx = token.indexOf(':');
+
+            if (idx <0 ){
+                result.put(token.trim(), "");
+            } else {
+                String key = token.substring(0, idx).trim();
+                String val = token.substring(idx + 1).trim();
+                if (!key.isEmpty()) result.put(key, val);
+            }
+        }
+        return result;
+    }
+
 }
+
+

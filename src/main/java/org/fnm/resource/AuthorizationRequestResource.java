@@ -1,4 +1,4 @@
-package org.fnm;
+package org.fnm.resource;
 
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
@@ -8,9 +8,13 @@ import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
+import org.fnm.AuthorizationService;
+import org.fnm.model.AuthorizationRequestParameter;
 import org.jboss.logging.Logger;
 
 import java.net.URI;
+import java.util.Base64;
+import java.util.List;
 import java.util.UUID;
 
 @Path("/authorize")
@@ -26,6 +30,9 @@ public class AuthorizationRequestResource {
 
         MultivaluedMap<String, String> queryParams = uriInfo.getQueryParameters();
 
+        // just to know
+        log2Console(headers, queryParams);
+
         AuthorizationRequestParameter requestParameter = new AuthorizationRequestParameter();
         requestParameter.responseType = queryParams.getFirst("response_type");
         requestParameter.state = queryParams.getFirst("state");
@@ -40,8 +47,13 @@ public class AuthorizationRequestResource {
         requestParameter.group = queryParams.getFirst("group");
         requestParameter.groupId = queryParams.getFirst("group_id");
         requestParameter.personId = queryParams.getFirst("person_id");
+        requestParameter.clientId = queryParams.getFirst("client_id");
 
-        log2Console(headers, queryParams);
+        // get client id and secret from authorization header
+        List<String> clientIdAndSecret =
+                parseAuthorizationHeader(headers.getRequestHeaders().get("Authorization").getFirst());
+        requestParameter.clientId = clientIdAndSecret.getFirst(); // client id is read twice, but it's ok'
+        requestParameter.clientSecret = clientIdAndSecret.getLast();
 
         if (!requestParameter.isComplete()) {
             LOG.error("Invalid request. At least one required parameter is missing.");
@@ -58,6 +70,34 @@ public class AuthorizationRequestResource {
         // re-direct to redirectUri. Uses http code 302 which allows the user agent to switch to the
         // http POST protocol to send the code and state to the applications callback endpoint.
         return Response.status(302).location(URI.create(uri)).build();
+    }
+
+    private List<String> parseAuthorizationHeader(String authHeader) {
+
+        // Check if the header starts with "Basic "
+        if (authHeader != null && authHeader.startsWith("Basic ")) {
+            // Extract the Base64 encoded part
+            String base64Credentials = authHeader.substring("Basic ".length()).trim();
+
+            // Decode the Base64 string
+            String credentials = new String(Base64.getDecoder().decode(base64Credentials));
+
+            // Split the credentials into client_id and client_secret
+            String[] values = credentials.split(":", 2);
+            String clientId = values[0];
+            String clientSecret = values[1];
+
+            // Output the results
+            LOG.info("Client ID: " + clientId);
+            LOG.info("Client Secret: " + clientSecret);
+
+            return List.of(clientId, clientSecret);
+
+        } else {
+            LOG.info("Invalid Authorization header");
+            return List.of();
+        }
+
     }
 
     /**
@@ -78,6 +118,5 @@ public class AuthorizationRequestResource {
                 key -> LOG.info(key + ":" + queryParam.get(key))
         );
     }
-
 
 }

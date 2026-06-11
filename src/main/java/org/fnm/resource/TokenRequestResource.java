@@ -1,9 +1,11 @@
-package org.fnm;
+package org.fnm.resource;
 
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.*;
+import org.fnm.AuthorizationService;
 import org.fnm.helper.GrantType;
+import org.fnm.model.TokenRequestParameter;
 import org.jboss.logging.Logger;
 
 import java.util.Base64;
@@ -17,7 +19,7 @@ public class TokenRequestResource {
     private static final Logger LOG = Logger.getLogger(TokenRequestResource.class);
 
     @Inject
-    AuthorizationService AuthorizationService;
+    AuthorizationService authorizationService;
 
     @POST
     @Consumes(MediaType.APPLICATION_FORM_URLENCODED)
@@ -54,11 +56,12 @@ public class TokenRequestResource {
             LOG.error("Invalid request. At least one required parameter is missing for grant type = " + tokenRequestParameter.grantType);
             return Response.status(400, "invalid_request").build();
         }
-        
-        if (GrantType.clientCredentials.equals(tokenRequestParameter.grantType) ||
-                GrantType.authorizationCode.equals(tokenRequestParameter.grantType)){
 
-            String jwt = AuthorizationService.buildJWT(tokenRequestParameter);
+        if (GrantType.clientCredentials.equals(tokenRequestParameter.grantType) ||
+                GrantType.authorizationCode.equals(tokenRequestParameter.grantType)) {
+
+            // build JWT depending on the grant type
+            String jwt = authorizationService.buildJWT(tokenRequestParameter);
             return Response.ok(jwt).build();
 
         } else {

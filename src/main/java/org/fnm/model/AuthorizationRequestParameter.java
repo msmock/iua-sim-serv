@@ -1,16 +1,19 @@
-package org.fnm;
+package org.fnm.model;
 
-import org.fnm.helper.GrantType;
 import org.jboss.logging.Logger;
 
 public class AuthorizationRequestParameter {
 
     private static final Logger LOG = Logger.getLogger(AuthorizationRequestParameter.class);
 
-    public String grantType = GrantType.authorizationCode;
+    public String RESPONSE_TYPE = "code";
+
+    // client Id and secret
+    public String clientId;
+    public String clientSecret;
 
     // required
-    public String responseType; // required shall be code
+    public String responseType; // required shall be 'code'
     public String state; // required csf token
     public String scope; // required scope
     public String redirectUri; // required url of the client
@@ -32,7 +35,8 @@ public class AuthorizationRequestParameter {
      * @return true, if all required fields are set
      */
     public boolean isComplete() {
-        return (grantType != null && !grantType.isEmpty() &&
+        return (clientId != null && !clientId.isEmpty() &&
+                clientSecret != null && !clientSecret.isEmpty() &&
                 responseType != null && !responseType.isEmpty() &&
                 state != null && !state.isEmpty() &&
                 scope != null && !scope.isEmpty() &&
