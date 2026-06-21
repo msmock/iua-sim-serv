@@ -2,6 +2,7 @@ package org.fnm;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.nimbusds.jose.JOSEException;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -157,21 +158,33 @@ public class AuthorizationService {
 
         } else if (UserRole.HCP.equals(role)){
 
-            // requires iua extension, epr extension and ch_group extension
+            // requires iua extension, ch_epr extension and ch_group extension
+            JsonObject iuaExtension = new JsonObject();
+            iuaExtension.addProperty("subject_name", authorizationRequestParameter.principal);
+            iuaExtension.addProperty("home_community_id", "${principal-community-id}");
+            extensions.add("ch_iua", iuaExtension);
 
             JsonObject eprExtension = new JsonObject();
             eprExtension.addProperty("user_id", authorizationRequestParameter.principalId);
             eprExtension.addProperty("user_id_qualifier", "urn:gs1:gln");
             extensions.add("ch_epr", eprExtension);
 
-            JsonObject iuaExtension = new JsonObject();
-            iuaExtension.addProperty("subject_name", authorizationRequestParameter.principal);
-            iuaExtension.addProperty("home_community_id", "${principal-community-id}");
-            extensions.add("ch_iua", iuaExtension);
+            JsonArray groups = new JsonArray();
+            JsonObject item = new JsonObject();
+            item.addProperty("name", "Name of group with id urn:oid:2.2.2.1");
+            item.addProperty("id", "urn:oid:2.2.2.1");
+            groups.add(item);
+
+            item = new JsonObject();
+            item.addProperty("name", "Name of group with id urn:oid:2.2.2.2");
+            item.addProperty("id", "urn:oid:2.2.2.2");
+            groups.add(item);
+
+            extensions.add("ch_groups", groups);
 
         } else {
 
-            // branch for role
+            // TODO branch for other roles
 
             JsonObject eprExtension = new JsonObject();
             eprExtension.addProperty("user_id", authorizationRequestParameter.principalId);
@@ -222,11 +235,7 @@ public class AuthorizationService {
         for (String token : tokens) {
 
             if (token.isEmpty()) continue;
-            // accept either ":" or "=" as key/value separator
-            // TODO should be the minimum of both values if both are > 0
             int idx = token.indexOf('=');
-            if (idx < 0) idx = token.indexOf(':');
-
             if (idx <0 ){
                 result.put(token.trim(), "");
             } else {
