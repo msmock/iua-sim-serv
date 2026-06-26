@@ -62,7 +62,7 @@ public class AuthorizationRequestResource {
 
         // generate authorization code
         String code = UUID.randomUUID().toString();
-        String uri = requestParameter.redirectUri + "?authorization_code=" + code + "&state=" + requestParameter.state;
+        String uri = requestParameter.redirectUri + "?code=" + code + "&state=" + requestParameter.state;
 
         // register authorization request data at authorization service
         authorizationService.registerAuthorizationRequest(code, requestParameter);
