@@ -35,19 +35,19 @@ public class AuthorizationRequestResource {
 
         AuthorizationRequestParameter requestParameter = new AuthorizationRequestParameter();
         requestParameter.responseType = queryParams.getFirst("response_type");
+        requestParameter.clientId = queryParams.getFirst("client_id");
         requestParameter.state = queryParams.getFirst("state");
-        requestParameter.scope = queryParams.getFirst("scope");
         requestParameter.redirectUri = queryParams.getFirst("redirect_uri");
-        requestParameter.resource = queryParams.getFirst("resource");
-        requestParameter.codeChallenge = queryParams.getFirst("code_challenge");
-        requestParameter.codeChallengeMethod = queryParams.getFirst("code_challenge_method");
-        requestParameter.requestedTokenType = queryParams.getFirst("requested_token_type");
+        requestParameter.scope = queryParams.getFirst("scope");
+        requestParameter.personId = queryParams.getFirst("person_id");
         requestParameter.principal = queryParams.getFirst("principal");
         requestParameter.principalId = queryParams.getFirst("principal_id");
         requestParameter.group = queryParams.getFirst("group");
         requestParameter.groupId = queryParams.getFirst("group_id");
-        requestParameter.personId = queryParams.getFirst("person_id");
-        requestParameter.clientId = queryParams.getFirst("client_id");
+        requestParameter.resource = queryParams.getFirst("resource");
+        requestParameter.codeChallenge = queryParams.getFirst("code_challenge");
+        requestParameter.codeChallengeMethod = queryParams.getFirst("code_challenge_method");
+        requestParameter.requestedTokenType = queryParams.getFirst("requested_token_type");
 
         // get client id and secret from authorization header
         List<String> clientIdAndSecret =

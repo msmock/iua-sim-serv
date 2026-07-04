@@ -23,17 +23,10 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- *
- */
 @ApplicationScoped
 public class AuthorizationService {
 
     private static final Logger LOG = Logger.getLogger(AuthorizationService.class);
-
-    public static final String SPID = "761337610411353650^^^&2.16.756.5.30.1.127.3.10.3&ISO";
-
-    // container for the authorization requests
     private final Map<String, AuthorizationRequestParameter> authorizationRequests = new ConcurrentHashMap<>();
 
     /**
@@ -67,15 +60,34 @@ public class AuthorizationService {
 
             JsonObject extensions = new JsonObject();
 
+            JsonObject iuaExtension = new JsonObject();
+            iuaExtension.addProperty("subject_name", tokenRequestParameter.principal);
+            iuaExtension.addProperty("subject_role", "TC");
+            iuaExtension.addProperty("purpose_of_use", PurposeOfUse.NORM);
+            iuaExtension.addProperty("home_community_id", "${principal-community-id}");
+            if (tokenRequestParameter.personId != null && !tokenRequestParameter.personId.isBlank())
+                iuaExtension.addProperty("person_id", tokenRequestParameter.personId);
+            extensions.add("ch_iua", iuaExtension);
+
             JsonObject eprExtension = new JsonObject();
             eprExtension.addProperty("user_id", tokenRequestParameter.principalId);
             eprExtension.addProperty("user_id_qualifier", "urn:gs1:gln");
             extensions.add("ch_epr", eprExtension);
 
-            JsonObject iuaExtension = new JsonObject();
-            iuaExtension.addProperty("subject_name", tokenRequestParameter.principal);
-            iuaExtension.addProperty("home_community_id", "${principal-community-id}");
-            extensions.add("ch_iua", iuaExtension);
+            // add faked groups
+            JsonArray groups = new JsonArray();
+
+            JsonObject item = new JsonObject();
+            item.addProperty("name", "Name of group with id urn:oid:2.2.2.1");
+            item.addProperty("id", "urn:oid:2.2.2.1");
+            groups.add(item);
+
+            item = new JsonObject();
+            item.addProperty("name", "Name of group with id urn:oid:2.2.2.2");
+            item.addProperty("id", "urn:oid:2.2.2.2");
+            groups.add(item);
+
+            extensions.add("ch_groups", groups);
 
             payload.add("extensions", extensions);
             return payload.toString();
@@ -141,12 +153,6 @@ public class AuthorizationService {
 
         if (UserRole.PAT.equals(role)) {
 
-            // always use the same spid for patients with role PAT
-            JsonObject eprExtension = new JsonObject();
-            eprExtension.addProperty("user_id", authorizationRequestParameter.personId);
-            eprExtension.addProperty("user_id_qualifier", "urn:e-health-suisse:2015:epr-spid");
-            extensions.add("ch_epr", eprExtension);
-
             // mock person id, name and home community id
             JsonObject iuaExtension = new JsonObject();
             iuaExtension.addProperty("subject_name", "Martina Mustermann");
@@ -156,16 +162,25 @@ public class AuthorizationService {
             iuaExtension.addProperty("person_id", authorizationRequestParameter.personId);
             extensions.add("ch_iua", iuaExtension);
 
+            // always use the same spid for patients with role PAT
+            JsonObject eprExtension = new JsonObject();
+            eprExtension.addProperty("user_id", authorizationRequestParameter.personId);
+            eprExtension.addProperty("user_id_qualifier", "urn:e-health-suisse:2015:epr-spid");
+            extensions.add("ch_epr", eprExtension);
+
         } else if (UserRole.HCP.equals(role)){
 
             // requires iua extension, ch_epr extension and ch_group extension
             JsonObject iuaExtension = new JsonObject();
-            iuaExtension.addProperty("subject_name", authorizationRequestParameter.principal);
-            iuaExtension.addProperty("home_community_id", "${principal-community-id}");
+            iuaExtension.addProperty("subject_name", "Dr. Walter");
+            iuaExtension.addProperty("subject_role", role);
+            iuaExtension.addProperty("purpose_of_use", PurposeOfUse.NORM);
+            iuaExtension.addProperty("home_community_id", "urn:oid:1.2.3.4");
+            iuaExtension.addProperty("person_id", authorizationRequestParameter.personId);
             extensions.add("ch_iua", iuaExtension);
 
             JsonObject eprExtension = new JsonObject();
-            eprExtension.addProperty("user_id", authorizationRequestParameter.principalId);
+            eprExtension.addProperty("user_id", "7601000996824");
             eprExtension.addProperty("user_id_qualifier", "urn:gs1:gln");
             extensions.add("ch_epr", eprExtension);
 
@@ -182,9 +197,37 @@ public class AuthorizationService {
 
             extensions.add("ch_groups", groups);
 
-        } else {
+        } else if (UserRole.ASS.equals(role)){
 
-            // TODO branch for other roles
+            // TODO
+
+            JsonObject eprExtension = new JsonObject();
+            eprExtension.addProperty("user_id", authorizationRequestParameter.principalId);
+            eprExtension.addProperty("user_id_qualifier", "urn:gs1:gln");
+            extensions.add("ch_epr", eprExtension);
+
+            JsonObject iuaExtension = new JsonObject();
+            iuaExtension.addProperty("subject_name", authorizationRequestParameter.principal);
+            iuaExtension.addProperty("home_community_id", "${principal-community-id}");
+            extensions.add("ch_iua", iuaExtension);
+
+        } else if (UserRole.REP.equals(role)){
+
+            // TODO
+
+            JsonObject eprExtension = new JsonObject();
+            eprExtension.addProperty("user_id", authorizationRequestParameter.principalId);
+            eprExtension.addProperty("user_id_qualifier", "urn:gs1:gln");
+            extensions.add("ch_epr", eprExtension);
+
+            JsonObject iuaExtension = new JsonObject();
+            iuaExtension.addProperty("subject_name", authorizationRequestParameter.principal);
+            iuaExtension.addProperty("home_community_id", "${principal-community-id}");
+            extensions.add("ch_iua", iuaExtension);
+
+        } else if (UserRole.DADM.equals(role) || UserRole.PADM.equals(role)){
+
+            // TODO
 
             JsonObject eprExtension = new JsonObject();
             eprExtension.addProperty("user_id", authorizationRequestParameter.principalId);
