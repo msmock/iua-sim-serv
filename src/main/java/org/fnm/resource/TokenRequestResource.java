@@ -64,6 +64,8 @@ public class TokenRequestResource {
             String jwt = authorizationService.buildJWT(tokenRequestParameter);
             return Response.ok(jwt).build();
 
+            // TODO catch exceptions and return error response
+
         } else {
             return Response.status(400, "unsupported_grant_type").build();
         }

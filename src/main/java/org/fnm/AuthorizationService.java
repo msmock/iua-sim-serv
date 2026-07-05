@@ -118,21 +118,11 @@ public class AuthorizationService {
             payload.addProperty("jti", UUID.randomUUID().toString());
             payload.addProperty("scope", authorizationRequestParameter.scope);
 
-            // if person id is null, the token is a basic access token
-            if (authorizationRequestParameter.personId != null && !authorizationRequestParameter.personId.isEmpty()) {
-                payload.addProperty("person_id", authorizationRequestParameter.personId);
-            }
-
             // parse scope for role, e.g.: purpose_of_use=urn:oid:2.16.756.5.30.1.127.3.10.5|NORM subject_role=urn:oid:2.16.756.5.30.1.127.3.10.6|HCP
             String scopeS = authorizationRequestParameter.scope;
             Map<String, String> scopeMap = parseScope(scopeS);
 
             String role = scopeMap.get("subject_role");
-
-            LOG.info("User role is : " + role);
-
-            if (role == null || role.isEmpty()) throw new IllegalArgumentException("Unsupported user role : " + role);
-
             JsonObject extensions = buildExtensionsForRole(role, authorizationRequestParameter);
             payload.add("extensions", extensions);
 
@@ -143,10 +133,16 @@ public class AuthorizationService {
         }
 
         throw new IllegalArgumentException("Unsupported grant type: " + tokenRequestParameter.grantType);
-
     }
 
 
+    /**
+     * Note: if person id is null, the token is a basic access token
+     *
+     * @param role
+     * @param authorizationRequestParameter
+     * @return
+     */
     private JsonObject buildExtensionsForRole(String role, AuthorizationRequestParameter authorizationRequestParameter) {
 
         JsonObject extensions = new JsonObject();
@@ -159,7 +155,8 @@ public class AuthorizationService {
             iuaExtension.addProperty("subject_role", role);
             iuaExtension.addProperty("purpose_of_use", PurposeOfUse.NORM);
             iuaExtension.addProperty("home_community_id", "urn:oid:1.2.3.4");
-            iuaExtension.addProperty("person_id", authorizationRequestParameter.personId);
+            if (authorizationRequestParameter.personId != null && !authorizationRequestParameter.personId.isEmpty())
+                iuaExtension.addProperty("person_id", authorizationRequestParameter.personId);
             extensions.add("ch_iua", iuaExtension);
 
             // always use the same spid for patients with role PAT
@@ -168,22 +165,43 @@ public class AuthorizationService {
             eprExtension.addProperty("user_id_qualifier", "urn:e-health-suisse:2015:epr-spid");
             extensions.add("ch_epr", eprExtension);
 
-        } else if (UserRole.HCP.equals(role)){
+        } else if (UserRole.REP.equals(role)) {
 
-            // requires iua extension, ch_epr extension and ch_group extension
+            // mock person id, name and home community id
             JsonObject iuaExtension = new JsonObject();
-            iuaExtension.addProperty("subject_name", "Dr. Walter");
+            iuaExtension.addProperty("subject_name", "Sandra Mustermann");
             iuaExtension.addProperty("subject_role", role);
             iuaExtension.addProperty("purpose_of_use", PurposeOfUse.NORM);
             iuaExtension.addProperty("home_community_id", "urn:oid:1.2.3.4");
-            iuaExtension.addProperty("person_id", authorizationRequestParameter.personId);
+            if (authorizationRequestParameter.personId != null && !authorizationRequestParameter.personId.isEmpty())
+                iuaExtension.addProperty("person_id", authorizationRequestParameter.personId);
             extensions.add("ch_iua", iuaExtension);
 
+            // always use the same spid for patients with role PAT
             JsonObject eprExtension = new JsonObject();
-            eprExtension.addProperty("user_id", "7601000996824");
+            eprExtension.addProperty("user_id", "IdPID-of-Sandra-Mustermann");
+            eprExtension.addProperty("user_id_qualifier", "urn:e-health-suisse:2015:epr-spid");
+            extensions.add("ch_epr", eprExtension);
+
+        } else if (UserRole.HCP.equals(role)) {
+
+            // ch_iua extension
+            JsonObject iuaExtension = new JsonObject();
+            iuaExtension.addProperty("subject_name", "Dr. Meier");
+            iuaExtension.addProperty("subject_role", role);
+            iuaExtension.addProperty("purpose_of_use", PurposeOfUse.NORM);
+            iuaExtension.addProperty("home_community_id", "urn:oid:1.2.3.4");
+            if (authorizationRequestParameter.personId != null && !authorizationRequestParameter.personId.isEmpty())
+                iuaExtension.addProperty("person_id", authorizationRequestParameter.personId);
+            extensions.add("ch_iua", iuaExtension);
+
+            // ch_epr extension
+            JsonObject eprExtension = new JsonObject();
+            eprExtension.addProperty("user_id", "7601000996434");
             eprExtension.addProperty("user_id_qualifier", "urn:gs1:gln");
             extensions.add("ch_epr", eprExtension);
 
+            // groups
             JsonArray groups = new JsonArray();
             JsonObject item = new JsonObject();
             item.addProperty("name", "Name of group with id urn:oid:2.2.2.1");
@@ -197,48 +215,66 @@ public class AuthorizationService {
 
             extensions.add("ch_groups", groups);
 
-        } else if (UserRole.ASS.equals(role)){
+        } else if (UserRole.ASS.equals(role)) {
 
-            // TODO
+            // ch_iua extension
+            JsonObject iuaExtension = new JsonObject();
+            iuaExtension.addProperty("subject_name", "Susanne Helfer");
+            iuaExtension.addProperty("subject_role", role);
+            iuaExtension.addProperty("purpose_of_use", PurposeOfUse.NORM);
+            iuaExtension.addProperty("home_community_id", "urn:oid:1.2.3.4");
+            if (authorizationRequestParameter.personId != null && !authorizationRequestParameter.personId.isEmpty())
+                iuaExtension.addProperty("person_id", authorizationRequestParameter.personId);
+            extensions.add("ch_iua", iuaExtension);
 
+            // ch_epr extension
             JsonObject eprExtension = new JsonObject();
-            eprExtension.addProperty("user_id", authorizationRequestParameter.principalId);
+            eprExtension.addProperty("user_id", "7601000996824");
             eprExtension.addProperty("user_id_qualifier", "urn:gs1:gln");
             extensions.add("ch_epr", eprExtension);
 
+            // ch_delegation extension
+            JsonObject delegationExtension = new JsonObject();
+            delegationExtension.addProperty("principal", "Dr. Meier");
+            delegationExtension.addProperty("principal_id", "7601000996434");
+            extensions.add("ch_delegation", delegationExtension);
+
+            // groups
+            JsonArray groups = new JsonArray();
+            JsonObject item = new JsonObject();
+            item.addProperty("name", "Name of group with id urn:oid:2.2.2.1");
+            item.addProperty("id", "urn:oid:2.2.2.1");
+            groups.add(item);
+
+            item = new JsonObject();
+            item.addProperty("name", "Name of group with id urn:oid:2.2.2.2");
+            item.addProperty("id", "urn:oid:2.2.2.2");
+            groups.add(item);
+
+            extensions.add("ch_groups", groups);
+
+        } else if (UserRole.DADM.equals(role) || UserRole.PADM.equals(role)) {
+
+            // mock person id, name and home community id
             JsonObject iuaExtension = new JsonObject();
-            iuaExtension.addProperty("subject_name", authorizationRequestParameter.principal);
-            iuaExtension.addProperty("home_community_id", "${principal-community-id}");
+            iuaExtension.addProperty("subject_name", "Peter Administrator");
+            iuaExtension.addProperty("subject_role", role);
+            iuaExtension.addProperty("purpose_of_use", PurposeOfUse.NORM);
+            iuaExtension.addProperty("home_community_id", "urn:oid:1.2.3.4");
+            if (authorizationRequestParameter.personId != null && !authorizationRequestParameter.personId.isEmpty())
+                iuaExtension.addProperty("person_id", authorizationRequestParameter.personId);
             extensions.add("ch_iua", iuaExtension);
 
-        } else if (UserRole.REP.equals(role)){
-
-            // TODO
-
+            // always use the same spid for patients with role PAT
             JsonObject eprExtension = new JsonObject();
-            eprExtension.addProperty("user_id", authorizationRequestParameter.principalId);
-            eprExtension.addProperty("user_id_qualifier", "urn:gs1:gln");
+            eprExtension.addProperty("user_id", "IdPID-of-Administrator");
+            eprExtension.addProperty("user_id_qualifier", "urn:e-health-suisse:2015:epr-spid");
             extensions.add("ch_epr", eprExtension);
 
-            JsonObject iuaExtension = new JsonObject();
-            iuaExtension.addProperty("subject_name", authorizationRequestParameter.principal);
-            iuaExtension.addProperty("home_community_id", "${principal-community-id}");
-            extensions.add("ch_iua", iuaExtension);
-
-        } else if (UserRole.DADM.equals(role) || UserRole.PADM.equals(role)){
-
-            // TODO
-
-            JsonObject eprExtension = new JsonObject();
-            eprExtension.addProperty("user_id", authorizationRequestParameter.principalId);
-            eprExtension.addProperty("user_id_qualifier", "urn:gs1:gln");
-            extensions.add("ch_epr", eprExtension);
-
-            JsonObject iuaExtension = new JsonObject();
-            iuaExtension.addProperty("subject_name", authorizationRequestParameter.principal);
-            iuaExtension.addProperty("home_community_id", "${principal-community-id}");
-            extensions.add("ch_iua", iuaExtension);
-
+        } else {
+            String message = "Unsupported user role : " + role;
+            LOG.info(message);
+            throw new IllegalArgumentException(message);
         }
 
         return extensions;
@@ -279,7 +315,7 @@ public class AuthorizationService {
 
             if (token.isEmpty()) continue;
             int idx = token.indexOf('=');
-            if (idx <0 ){
+            if (idx < 0) {
                 result.put(token.trim(), "");
             } else {
                 String key = token.substring(0, idx).trim();
