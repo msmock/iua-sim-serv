@@ -45,5 +45,4 @@ nb-configuration.xml
 # TLS Certificates
 .certs/
 
-# Signature keys
-signature-keys/
+
