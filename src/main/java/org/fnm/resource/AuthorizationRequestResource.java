@@ -20,7 +20,7 @@ import java.util.UUID;
 @Path("/authorize")
 public class AuthorizationRequestResource {
 
-    private static final Logger LOG = Logger.getLogger(TokenRequestResource.class);
+    private static final Logger LOG = Logger.getLogger(AuthorizationRequestResource.class);
 
     @Inject
     AuthorizationService authorizationService;
@@ -66,6 +66,7 @@ public class AuthorizationRequestResource {
 
         // register authorization request data at authorization service
         authorizationService.registerAuthorizationRequest(code, requestParameter);
+        LOG.info("Authorization request registered with code = " + code);
 
         // re-direct to redirectUri. Uses http code 302 which allows the user agent to switch to the
         // http POST protocol to send the code and state to the applications callback endpoint.

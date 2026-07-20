@@ -138,10 +138,6 @@ public class AuthorizationService {
 
     /**
      * Note: if person id is null, the token is a basic access token
-     *
-     * @param role
-     * @param authorizationRequestParameter
-     * @return
      */
     private JsonObject buildExtensionsForRole(String role, AuthorizationRequestParameter authorizationRequestParameter) {
 
