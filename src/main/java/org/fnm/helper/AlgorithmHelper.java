@@ -14,28 +14,28 @@ import java.text.ParseException;
 public class AlgorithmHelper {
 
     public static Algorithm loadECPrivateKey() throws ParseException, IOException, JOSEException {
-        String privateKeyAsString = readResource("signature-keys/JWK-EC-pair.json");
+        String privateKeyAsString = readResource("JWK-EC-pair.json");
         JWK privateJWK = JWK.parse(privateKeyAsString);
         ECKey privateKey = privateJWK.toECKey();
         return Algorithm.ECDSA256(privateKey.toECPrivateKey());
     }
 
     public static Algorithm loadECPublicKey() throws ParseException, IOException, JOSEException {
-        String publicKeyAsString =  readResource("signature-keys/JWK-EC-public-key.json");
+        String publicKeyAsString =  readResource("JWK-EC-public-key.json");
         JWK publicJWK = JWK.parse(publicKeyAsString);
         ECKey publicKey = publicJWK.toECKey();
         return Algorithm.ECDSA256(publicKey.toECPublicKey());
     }
 
     public static Algorithm loadRSAPrivateKey() throws ParseException, IOException, JOSEException {
-        String privateKeyAsString =  readResource("signature-keys/JWK-RSA-pair.json");
+        String privateKeyAsString =  readResource("JWK-RSA-pair.json");
         JWK privateJWK = JWK.parse(privateKeyAsString);
         RSAKey privateKey = privateJWK.toRSAKey();
         return Algorithm.RSA256(privateKey.toRSAPrivateKey());
     }
 
     public static Algorithm loadRSAPublicKey() throws ParseException, IOException, JOSEException {
-        String publicKeyAsString =  readResource("signature-keys/JWK-RSA-public-key.json");
+        String publicKeyAsString =  readResource("JWK-RSA-public-key.json");
         JWK publicJWK = JWK.parse(publicKeyAsString);
         RSAKey publicKey = publicJWK.toRSAKey();
         return Algorithm.RSA256(publicKey.toRSAPublicKey());
